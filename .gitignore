@@ -23,8 +23,3 @@ venv/
 # OS
 .DS_Store
 Thumbs.db
-
-# Temporary dev scripts
-append_styles.py
-fix_typos.py
-strip_emojis.py

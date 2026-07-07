@@ -43,7 +43,7 @@
     --text-muted:      #64748b;
     --text-dim:        #475569;
 
-    /* iorders & Misc */
+    /* Borders & Misc */
     --border:          rgba(255,255,255,0.06);
     --border-subtle:   rgba(255,255,255,0.04);
     --border-gold:     rgba(201,164,76,0.20);
@@ -52,7 +52,7 @@
     --radius-xs:       6px;
     --radius-full:     100px;
     --transition:      0.25s cubic-bezier(.4,0,.2,1);
-    --font:            'DM Sans', -apple-system, ilinkMacSystemFont, sans-serif;
+    --font:            'DM Sans', -apple-system, BlinkMacSystemFont, sans-serif;
     --font-mono:       'JetBrains Mono', 'Fira Code', monospace;
 }
 
@@ -1595,6 +1595,5 @@ body {
 
 /* Honest Error Status */
 .console-status.failed { color: #f43f5e; }
-
 
 

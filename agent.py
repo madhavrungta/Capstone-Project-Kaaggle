@@ -38,7 +38,7 @@ from config import (
     AI_PROVIDER,
     GROQ_API_KEY, GROQ_MODEL,
     GEMINI_API_KEY, GEMINI_MODEL,
-    MAX_SEARCH_QUERIES, MAX_COMPETITORS,
+    MAX_SEARCH_QUERIES, MAX_COMPETITORS, MAX_SCRAPE_PAGES,
 )
 from tools import search_web, scrape_page
 from models import (
@@ -262,7 +262,7 @@ class VyaparSathiAgent:
         yield self._log(" Phase 3  Scraping top competitor pages ", "phase")
         scraped: List[dict] = []
         pages_blocked = 0
-        to_scrape = unique_results[: min(MAX_COMPETITORS, len(unique_results))]
+        to_scrape = unique_results[: min(MAX_SCRAPE_PAGES, len(unique_results))]
         for idx, item in enumerate(to_scrape, 1):
             yield self._log(f"Scraping: {item['title'][:55]}", "scrape")
             content = await scrape_page(item["url"])

@@ -128,6 +128,6 @@ app.mount("/static", StaticFiles(directory="static"), name="static")
 # â”€â”€ Direct execution â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 if __name__ == "__main__":
     import uvicorn
-    uvicorn.run("main:app", host=HOST, port=int(PORT), reload=True)
+    uvicorn.run("main:app", host=HOST, port=int(PORT), reload=False)
 
 

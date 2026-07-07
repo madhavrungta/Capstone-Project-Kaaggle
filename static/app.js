@@ -967,10 +967,9 @@ function esc(str) {
 
 function renderStars(rating) {
     if (!rating) return "";
-    const full  = Math.floor(rating);
-    const half  = rating % 1 >= 0.5 ? 1 : 0;
-    const empty = 5 - full - half;
-    return `<span class="stars">${"".repeat(full)}${half ? "" : ""}${"".repeat(empty)}</span>`;
+    const filled = Math.max(0, Math.min(5, Math.round(rating)));
+    const empty = 5 - filled;
+    return `<span class="stars">${"★".repeat(filled)}${"☆".repeat(empty)}</span>`;
 }
 
 function populateList(elementId, items) {

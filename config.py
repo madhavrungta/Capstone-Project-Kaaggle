@@ -19,8 +19,9 @@ GROQ_API_KEY: str = os.getenv("GROQ_API_KEY", "")
 GROQ_MODEL: str = os.getenv("GROQ_MODEL", "llama-3.3-70b-versatile")
 
 # â”€â”€ Gemini API (backup) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
-GEMINI_API_KEY: str = os.getenv("GEMINI_API_KEY", "")
-os.environ["GOOGLE_API_KEY"] = GEMINI_API_KEY
+GEMINI_API_KEY: str = os.getenv("GEMINI_API_KEY") or os.getenv("GOOGLE_API_KEY", "")
+if GEMINI_API_KEY and not os.getenv("GOOGLE_API_KEY"):
+    os.environ["GOOGLE_API_KEY"] = GEMINI_API_KEY
 GEMINI_MODEL: str = os.getenv("GEMINI_MODEL", "gemini-2.0-flash")
 
 # â”€â”€ Server â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
