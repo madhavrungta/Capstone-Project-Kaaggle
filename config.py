@@ -13,6 +13,9 @@ load_dotenv(override=True)
 # â”€â”€ AI Provider â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 # Supports "groq" (default, free) or "gemini"
 AI_PROVIDER: str = os.getenv("AI_PROVIDER", "groq")
+AI_FALLBACK_ENABLED: bool = os.getenv("AI_FALLBACK_ENABLED", "true").lower() in {
+    "1", "true", "yes", "on"
+}
 
 # â”€â”€ Groq API (FREE â€” default) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 GROQ_API_KEY: str = os.getenv("GROQ_API_KEY", "")

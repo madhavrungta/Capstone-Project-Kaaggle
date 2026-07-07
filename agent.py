@@ -35,7 +35,7 @@ from typing import AsyncGenerator, Dict, Any, List, Optional
 from pydantic import ValidationError
 
 from config import (
-    AI_PROVIDER,
+    AI_PROVIDER, AI_FALLBACK_ENABLED,
     GROQ_API_KEY, GROQ_MODEL,
     GEMINI_API_KEY, GEMINI_MODEL,
     MAX_SEARCH_QUERIES, MAX_COMPETITORS, MAX_SCRAPE_PAGES,
@@ -102,7 +102,10 @@ class VyaparSathiAgent:
             if groq_client: providers.append("groq")
             if gemini_client: providers.append("gemini")
 
-        last_error = None
+        if not AI_FALLBACK_ENABLED and providers:
+            providers = providers[:1]
+
+        errors: List[str] = []
         for provider in providers:
             try:
                 if provider == "gemini":
@@ -135,11 +138,14 @@ class VyaparSathiAgent:
                     )
                     return response.choices[0].message.content
             except Exception as e:
-                last_error = e
+                error_text = " ".join(str(e).split())
+                errors.append(f"{provider}: {error_text}")
                 print(f"[AI Fallback] {provider} failed: {e}. Trying next provider...")
                 continue
 
-        raise last_error or RuntimeError("No AI provider available")
+        if errors:
+            raise RuntimeError("All AI providers failed. " + " | ".join(errors))
+        raise RuntimeError("No AI provider available")
 
     #  Safe JSON parse + Pydantic validate 
     def _safe_parse(self, text: str) -> dict:
