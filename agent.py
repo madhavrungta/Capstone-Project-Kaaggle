@@ -597,12 +597,94 @@ class VyaparSathiAgent:
         except ValidationError:
             return CriticReview().model_dump()
 
+    @staticmethod
+    def _truncate_text(value: Any, limit: int = 240) -> str:
+        """Trim long strings so review prompts stay within provider limits."""
+        text = str(value or "").strip()
+        if len(text) <= limit:
+            return text
+        return text[: max(0, limit - 3)].rstrip() + "..."
+
+    def _build_revision_context(self, report: dict, critic_review: dict) -> dict:
+        """Create a compact context payload for the revision step."""
+        compact_competitors = []
+        for comp in (report.get("competitors") or [])[:6]:
+            if not isinstance(comp, dict):
+                continue
+            compact_competitors.append(
+                {
+                    "name": comp.get("name"),
+                    "pricing_tier": comp.get("pricing_tier"),
+                    "cluster": comp.get("cluster"),
+                    "quality_score": comp.get("quality_score"),
+                    "price_score": comp.get("price_score"),
+                    "strengths": (comp.get("strengths") or [])[:2],
+                    "weaknesses": (comp.get("weaknesses") or [])[:2],
+                    "unique_selling_point": self._truncate_text(
+                        comp.get("unique_selling_point"), 120
+                    ),
+                    "confidence_score": comp.get("confidence_score"),
+                    "source_count": comp.get("source_count"),
+                }
+            )
+
+        compact_gaps = []
+        for gap in (report.get("market_gaps") or [])[:5]:
+            if not isinstance(gap, dict):
+                continue
+            compact_gaps.append(
+                {
+                    "gap": gap.get("gap"),
+                    "description": self._truncate_text(gap.get("description"), 220),
+                    "recommended_action": self._truncate_text(
+                        gap.get("recommended_action"), 140
+                    ),
+                    "root_cause": self._truncate_text(gap.get("root_cause"), 140),
+                    "confidence_score": gap.get("confidence_score"),
+                }
+            )
+
+        compact_issues = []
+        for issue in (critic_review.get("issues") or [])[:8]:
+            if not isinstance(issue, dict):
+                continue
+            compact_issues.append(
+                {
+                    "section": issue.get("section"),
+                    "severity": issue.get("severity"),
+                    "issue": self._truncate_text(issue.get("issue"), 180),
+                    "suggestion": self._truncate_text(issue.get("suggestion"), 140),
+                }
+            )
+
+        return {
+            "niche": report.get("niche"),
+            "location": report.get("location"),
+            "executive_summary": self._truncate_text(
+                report.get("executive_summary"), 700
+            ),
+            "competitive_intensity": report.get("competitive_intensity"),
+            "recommendations": (report.get("recommendations") or [])[:5],
+            "swot": report.get("swot", {}),
+            "market_gaps": compact_gaps,
+            "competitors": compact_competitors,
+            "scorecard": report.get("scorecard"),
+            "critic_review": {
+                "overall_quality": critic_review.get("overall_quality"),
+                "revision_needed": critic_review.get("revision_needed"),
+                "issues": compact_issues,
+            },
+        }
+
     async def _revise_report(self, report: dict, critic_review: dict) -> dict:
         """Revise the report based on critic feedback."""
+        revision_context = self._build_revision_context(report, critic_review)
         prompt = (
             "The Critic Agent has reviewed our market report and found issues.\n\n"
-            f"ORIGINAL REPORT:\n{json.dumps(report, indent=2)}\n\n"
-            f"CRITIC FEEDBACK:\n{json.dumps(critic_review, indent=2)}\n\n"
+            "Use the compact report context below to revise only the summary-level "
+            "parts of the report while preserving consistency with the competitor "
+            "landscape.\n\n"
+            f"REPORT CONTEXT:\n{json.dumps(revision_context, indent=2)}\n\n"
             "Please REVISE the report to address the critic's concerns.\n"
             "Specifically:\n"
             "   Strengthen any weak SWOT points\n"
@@ -614,8 +696,52 @@ class VyaparSathiAgent:
             '  "scorecard" (with opportunity_score, differentiation_score, etc.)\n\n'
             "ONLY return the revised summary fields, not the full competitors/swot/gaps."
         )
-        text = await self._generate(prompt)
+        try:
+            text = await self._generate(prompt)
+        except Exception as exc:
+            error_text = str(exc)
+            if "Request too large" not in error_text and "rate_limit_exceeded" not in error_text:
+                raise
+
+            # Final fallback: use only the critic issues + current summary-level fields.
+            lightweight_context = {
+                "executive_summary": revision_context["executive_summary"],
+                "competitive_intensity": revision_context["competitive_intensity"],
+                "recommendations": revision_context["recommendations"],
+                "scorecard": revision_context["scorecard"],
+                "critic_issues": revision_context["critic_review"]["issues"],
+            }
+            fallback_prompt = (
+                "Revise these summary-level market report fields using the critic issues.\n\n"
+                f"SUMMARY CONTEXT:\n{json.dumps(lightweight_context, indent=2)}\n\n"
+                'Return JSON with ONLY: "executive_summary", "recommendations", '
+                '"competitive_intensity", and "scorecard".'
+            )
+            text = await self._generate(fallback_prompt)
         revised = self._safe_parse(text)
+
+        # Some models occasionally wrap the revised fields in a JSON list
+        # instead of returning a single object. Normalize that shape so the
+        # critic loop can improve the report without crashing.
+        if isinstance(revised, list):
+            dict_items = [item for item in revised if isinstance(item, dict)]
+            if len(dict_items) == 1:
+                revised = dict_items[0]
+            else:
+                merged: Dict[str, Any] = {}
+                for item in dict_items:
+                    for key in (
+                        "executive_summary",
+                        "recommendations",
+                        "competitive_intensity",
+                        "scorecard",
+                    ):
+                        if key in item and key not in merged:
+                            merged[key] = item[key]
+                revised = merged
+
+        if not isinstance(revised, dict):
+            return report
 
         # Merge revised fields back into the report
         if revised.get("executive_summary"):
